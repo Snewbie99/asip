@@ -17,10 +17,10 @@ main()
     // If it fails, try with breakLog
     prisma.attendance.findFirst({
       include: { breakLog: true } as any
-    }).then(att2 => {
+    }).then((att2: any) => {
         console.log('--- ATTENDANCE (WITH breakLog) ---');
         console.log(JSON.stringify(att2, null, 2));
-    }).catch(e2 => {
+    }).catch((e2: any) => {
         console.error('FAILED WITH breakLog TOO:', e2.message);
     });
   })

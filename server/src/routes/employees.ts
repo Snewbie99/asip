@@ -237,7 +237,7 @@ router.post('/import', authenticate, requireAdmin, importUpload.single('file'), 
 
     const departments = await prisma.department.findMany();
     const deptMap: Record<string, string> = {};
-    departments.forEach(d => { deptMap[d.name.toLowerCase()] = d.id; });
+    departments.forEach((d: any) => { deptMap[d.name.toLowerCase()] = d.id; });
 
     let imported = 0;
     let skipped = 0;
