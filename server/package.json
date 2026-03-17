@@ -5,7 +5,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "npx prisma generate && tsc",
     "start": "node dist/index.js",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed-hosting": "node seed_hosting.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
