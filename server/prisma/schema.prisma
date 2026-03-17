@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ActivityLog {
+  id        String   @id
+  userId    String
+  type      String
+  label     String
+  desc      String?
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], map: "ActivityLog_userId_fkey")
+
+  @@index([userId], map: "ActivityLog_userId_fkey")
+  @@map("activitylog")
+}
+
+model attendance {
+  id            String            @id
+  userId        String
+  date          DateTime          @db.Date
+  clockInTime   DateTime?
+  clockInLat    Float?
+  clockInLng    Float?
+  clockOutTime  DateTime?
+  clockOutLat   Float?
+  clockOutLng   Float?
+  lateMinutes   Int               @default(0)
+  earlyLeaveMin Int               @default(0)
+  status        attendance_status @default(HADIR)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime
+  clockInPhoto  String?
+  clockOutPhoto String?
+  isFieldDuty   Boolean           @default(false)
+  user          user              @relation(fields: [userId], references: [id], map: "Attendance_userId_fkey")
+  breaklog      BreakLog[]
+
+  @@unique([userId, date], map: "Attendance_userId_date_key")
+}
+
+model BreakLog {
+  id           String     @id
+  attendanceId String
+  userId       String
+  breakStart   DateTime
+  breakEnd     DateTime?
+  photoUrl     String?
+  durationMin  Int?
+  createdAt    DateTime   @default(now())
+  attendance   attendance @relation(fields: [attendanceId], references: [id], map: "BreakLog_attendanceId_fkey")
+  user         user       @relation(fields: [userId], references: [id], map: "BreakLog_userId_fkey")
+
+  @@index([attendanceId], map: "BreakLog_attendanceId_fkey")
+  @@index([userId], map: "BreakLog_userId_fkey")
+  @@map("breaklog")
+}
+
+model department {
+  id            String          @id
+  name          String          @unique(map: "Department_name_key")
+  createdAt     DateTime        @default(now())
+  scheduleentry ScheduleEntry[]
+  user          user[]
+}
+
+model LeaveRequest {
+  id        String              @id
+  userId    String
+  type      leaverequest_type
+  startDate DateTime            @db.Date
+  endDate   DateTime            @db.Date
+  reason    String?             @db.Text
+  photoUrl  String?
+  status    leaverequest_status @default(PENDING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime
+  user      user                @relation(fields: [userId], references: [id], map: "LeaveRequest_userId_fkey")
+
+  @@index([userId], map: "LeaveRequest_userId_fkey")
+  @@map("leaverequest")
+}
+
+model LocationSetting {
+  id        String   @id
+  name      String   @default("Kantor Utama")
+  latitude  Float
+  longitude Float
+  radius    Int      @default(150)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("locationsetting")
+}
+
+model payroll {
+  id          String    @id
+  userId      String
+  month       Int
+  year        Int
+  basicSalary Float
+  allowance           Float     @default(0)
+  attendanceAllowance Float     @default(0)
+  deduction           Float     @default(0)
+  netSalary           Float
+  details             Json?
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+  user        user      @relation(fields: [userId], references: [id], map: "Payroll_userId_fkey")
+
+  @@unique([userId, month, year], map: "Payroll_userId_month_year_key")
+}
+
+model ScheduleEntry {
+  id            String      @id
+  scheduleSetId String
+  departmentId  String
+  dayOfWeek     Int
+  startTime     String
+  endTime       String
+  breakStart    String?
+  breakEnd      String?
+  department    department  @relation(fields: [departmentId], references: [id], map: "ScheduleEntry_departmentId_fkey")
+  ScheduleSet   ScheduleSet @relation(fields: [scheduleSetId], references: [id], onDelete: Cascade, map: "ScheduleEntry_scheduleSetId_fkey")
+
+  @@unique([scheduleSetId, departmentId, dayOfWeek], map: "ScheduleEntry_scheduleSetId_departmentId_dayOfWeek_key")
+  @@index([departmentId], map: "ScheduleEntry_departmentId_fkey")
+  @@map("scheduleentry")
+}
+
+model ScheduleSet {
+  id            String          @id
+  name          String          @unique(map: "ScheduleSet_name_key")
+  isActive      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  scheduleentry ScheduleEntry[]
+
+  @@map("scheduleset")
+}
+
+model user {
+  id           String         @id
+  employeeId   String         @unique(map: "User_employeeId_key")
+  name         String
+  email        String?
+  password     String
+  photoUrl     String?
+  role         user_role      @default(PEGAWAI)
+  departmentId String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  activitylog  ActivityLog[]
+  attendance   attendance[]
+  breaklog     BreakLog[]
+  leaverequest LeaveRequest[]
+  payroll      payroll[]
+  department   department?    @relation(fields: [departmentId], references: [id], map: "User_departmentId_fkey")
+  
+  // Payroll fields
+  employeeStatus          String?
+  joinDate                DateTime?
+  hasSpouse               Boolean        @default(false)
+  childCount              Int            @default(0)
+  positionAllowance       Float          @default(0)
+  serviceAllowancePercent Float          @default(0)
+  salaryIndex             Float          @default(1.0)
+  extraAllowance          Float          @default(0)
+
+  @@index([departmentId], map: "User_departmentId_fkey")
+}
+
+model PayrollRate {
+  id              String   @id
+  categoryName    String   @unique
+  basicSalary     Float
+  eatingTransport Float
+  workDiligence   Float
+  type            String   // PEGAWAI or KARYAWAN
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("payrollrate")
+}
+
+model PayrollConfig {
+  id                    String   @id
+  periodStartDay        Int      @default(1)       // 1 or 21
+  wifeAllowancePercent  Float    @default(10)      // % gaji pokok untuk istri
+  childAllowancePercent Float    @default(5)       // % gaji pokok per anak
+  maxChildren           Int      @default(2)       // max anak yang ditanggung
+  
+  // Potongan Terlambat
+  lateLowThreshold        Int      @default(1)
+  lateHighThreshold       Int      @default(5)
+  lateLowPenaltyPercent   Float    @default(50)      // % potongan
+  lateLowPenaltySource    String   @default("workDiligence") // sumber potongan (basicSalary, eatingTransport, workDiligence)
+  lateHighPenaltyPercent  Float    @default(100)
+  lateHighPenaltySource   String   @default("workDiligence")
+  
+  // Potongan Istirahat/Izin Keluar
+  breakThreshold          Int      @default(60)
+  breakLowPenaltyPercent  Float    @default(0)       // default 0 (tidak dipotong jika kurang dari 1 jam)
+  breakLowPenaltySource   String   @default("workDiligence")
+  breakHighPenaltyPercent Float    @default(100)
+  breakHighPenaltySource  String   @default("workDiligence")
+
+  updatedAt             DateTime @updatedAt
+
+  @@map("payrollconfig")
+}
+
+enum leaverequest_type {
+  SAKIT
+  CUTI
+  IZIN_PRIBADI
+  DINAS_LUAR
+}
+
+enum user_role {
+  ADMIN
+  PEGAWAI
+}
+
+enum leaverequest_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum attendance_status {
+  HADIR
+  IZIN
+  SAKIT
+  CUTI
+  ALPA
+}
