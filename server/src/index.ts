@@ -47,6 +47,17 @@ app.use('/api/recap', recapRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/payroll-management', payrollManagementRoutes);
 
+// Serving Frontend in Production
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+// Handle React Routing (Redirect all non-API requests to index.html)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  }
+});
+
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof SyntaxError && 'body' in err) {
